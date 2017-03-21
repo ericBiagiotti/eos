@@ -47,6 +47,10 @@
 namespace eos {
 	namespace render {
 
+int round(float x) {
+    return (int)((x >= 0.0) ? floor(x+0.5) : ceil(x-0.5));
+}
+
 /**
  * The interpolation types that can be used to map the
  * texture from the original image to the isomap.
@@ -279,8 +283,8 @@ inline cv::Mat extract_texture(core::Mesh mesh, cv::Mat affine_camera_matrix, cv
 								Vec3f homogenous_dst_coord = Vec3f(x, y, 1.0f);
 								Vec2f src_texel = Mat(warp_mat_org_inv * Mat(homogenous_dst_coord));
 
-								if ((cvRound(src_texel[1]) < image.rows) && cvRound(src_texel[0]) < image.cols) {
-									color = image.at<Vec3b>(cvRound(src_texel[1]), cvRound(src_texel[0]));
+                                                                if ((round(src_texel[1]) < image.rows) && round(src_texel[0]) < image.cols) {
+                                                                        color = image.at<Vec3b>(round(src_texel[1]), round(src_texel[0]));
 								}
 							}
 							isomap.at<Vec3b>(y, x) = color;
@@ -324,12 +328,12 @@ inline cv::Mat extract_texture(core::Mesh mesh, cv::Mat affine_camera_matrix, cv
 							const Mat homogenous_dst_coord(Vec3f(x, y, 1.0f));
 							const Vec2f src_texel = Mat(warp_mat_org_inv * homogenous_dst_coord);
 
-							if ((cvRound(src_texel[1]) < image.rows) && (cvRound(src_texel[0]) < image.cols) && cvRound(src_texel[0]) > 0 && cvRound(src_texel[1]) > 0)
+                                                        if ((round(src_texel[1]) < image.rows) && (round(src_texel[0]) < image.cols) && round(src_texel[0]) > 0 && round(src_texel[1]) > 0)
 							{
 								cv::Vec4b isomap_pixel;
-								isomap.at<cv::Vec4b>(y, x)[0] = image.at<Vec3b>(cvRound(src_texel[1]), cvRound(src_texel[0]))[0];
-								isomap.at<cv::Vec4b>(y, x)[1] = image.at<Vec3b>(cvRound(src_texel[1]), cvRound(src_texel[0]))[1];
-								isomap.at<cv::Vec4b>(y, x)[2] = image.at<Vec3b>(cvRound(src_texel[1]), cvRound(src_texel[0]))[2];
+                                                                isomap.at<cv::Vec4b>(y, x)[0] = image.at<Vec3b>(round(src_texel[1]), round(src_texel[0]))[0];
+                                                                isomap.at<cv::Vec4b>(y, x)[1] = image.at<Vec3b>(round(src_texel[1]), round(src_texel[0]))[1];
+                                                                isomap.at<cv::Vec4b>(y, x)[2] = image.at<Vec3b>(round(src_texel[1]), round(src_texel[0]))[2];
 								isomap.at<cv::Vec4b>(y, x)[3] = static_cast<uchar>(alpha_value); // pixel is visible
 							}
 						}
@@ -344,11 +348,11 @@ inline cv::Mat extract_texture(core::Mesh mesh, cv::Mat affine_camera_matrix, cv
 		r.get();
 	}
 
-	// Workaround for the black line in the isomap (see GitHub issue #4):
+        /*// Workaround for the black line in the isomap (see GitHub issue #4):
 	if (mesh.texcoords.size() <= 3448)
 	{
 		isomap = detail::interpolate_black_line(isomap);
-	}
+        }*/
 
 	return isomap;
 };
