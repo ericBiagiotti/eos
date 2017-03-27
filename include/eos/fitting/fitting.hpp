@@ -273,8 +273,6 @@ inline eos::fitting::PoseResults initialize_and_estimate_pose(const morphablemod
         image_points.emplace_back(landmarks[i].coordinates);
     }
 
-    // Need to do an initial pose fit to do the contour fitting inside the loop.
-    // We'll do an expression fit too, since face shapes vary quite a lot, depending on expressions.
     eos::fitting::ScaledOrthoProjectionParameters current_pose;
     current_pose = eos::fitting::estimate_orthographic_projection_linear(image_points, model_points, true, image_height);
     eos::fitting::RenderingParameters rendering_params(current_pose, image_width, image_height);
