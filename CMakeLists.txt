@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.1.3)
 project(eos)
 set(eos_VERSION_MAJOR 0)
-set(eos_VERSION_MINOR 11)
-set(eos_VERSION_PATCH 0)
+set(eos_VERSION_MINOR 12)
+set(eos_VERSION_PATCH 1)
 set(eos_VERSION ${eos_VERSION_MAJOR}.${eos_VERSION_MINOR}.${eos_VERSION_PATCH})
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -50,15 +50,19 @@ endif()
 find_package(Boost 1.50.0 COMPONENTS system REQUIRED)
 message(STATUS "Boost found at ${Boost_INCLUDE_DIRS}")
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(eos_3RDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty") # this is used by the CMakeLists.txt files in the subdirectories
+
+set(CMAKE_MODULE_PATH ${eos_3RDPARTY_DIR}/eigen/cmake)
+# Use the Eigen included in the submodule by default, but allow the user to override EIGEN3_INCLUDE_DIR:
+if(NOT DEFINED EIGEN3_INCLUDE_DIR)
+  set(EIGEN3_INCLUDE_DIR ${eos_3RDPARTY_DIR}/eigen)
+endif()
 find_package(Eigen3 REQUIRED)
 message(STATUS "Eigen3 found: ${EIGEN3_FOUND}, version: ${EIGEN3_VERSION}")
 message(STATUS "Eigen3 include dir found at ${EIGEN3_INCLUDE_DIR}")
 
-set(eos_3RDPARTY_DIR "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty") # this is used by the CMakeLists.txt files in the subdirectories
-
 # Set the include directories of the 3rd-party submodules that we use:
-set(CEREAL_INCLUDE_DIR "${eos_3RDPARTY_DIR}/cereal-1.1.1/include")
+set(CEREAL_INCLUDE_DIR "${eos_3RDPARTY_DIR}/cereal/include")
 set(glm_INCLUDE_DIR "${eos_3RDPARTY_DIR}/glm")
 set(nanoflann_INCLUDE_DIR "${eos_3RDPARTY_DIR}/nanoflann/include")
 set(eigen3_nnls_INCLUDE_DIR "${eos_3RDPARTY_DIR}/eigen3-nnls/src")
@@ -130,13 +134,17 @@ source_group(video REGULAR_EXPRESSION include/eos/video/*)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include) # our library headers
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/share/ DESTINATION share) # the model and metadata
 # For 3rd party headers, we only copy the headers and licence files:
-install(DIRECTORY ${eos_3RDPARTY_DIR}/cereal-1.1.1/ DESTINATION 3rdparty/cereal-1.1.1) # cereal headers
+install(DIRECTORY ${eos_3RDPARTY_DIR}/cereal/ DESTINATION 3rdparty/cereal) # cereal headers
 install(DIRECTORY ${eos_3RDPARTY_DIR}/glm/glm/ DESTINATION 3rdparty/glm/glm) # glm headers
 install(FILES ${eos_3RDPARTY_DIR}/glm/copying.txt DESTINATION 3rdparty/glm/) # glm licence
 install(DIRECTORY ${eos_3RDPARTY_DIR}/nanoflann/include/ DESTINATION 3rdparty/nanoflann/include) # nanoflann header
 install(FILES ${eos_3RDPARTY_DIR}/nanoflann/COPYING DESTINATION 3rdparty/nanoflann/) # nanoflann licence
 install(DIRECTORY ${eos_3RDPARTY_DIR}/eigen3-nnls/src/ DESTINATION 3rdparty/eigen3-nnls/src) # eigen3-nnls header
 install(FILES ${eos_3RDPARTY_DIR}/eigen3-nnls/README.md DESTINATION 3rdparty/eigen3-nnls/) # eigen3-nnls attribution
+# Install Eigen headers if we're using the Eigen submodule included with eos:
+if(EIGEN3_INCLUDE_DIR STREQUAL ${eos_3RDPARTY_DIR}/eigen)
+  install(DIRECTORY ${eos_3RDPARTY_DIR}/eigen/Eigen/ DESTINATION 3rdparty/eigen/Eigen)
+endif()
 
 if(EOS_BUILD_EXAMPLES)
   add_subdirectory(examples)
