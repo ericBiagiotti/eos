@@ -22,6 +22,7 @@
 #ifndef POSERESULTS_HPP_
 #define POSERESULTS_HPP_
 
+#include "Eigen/Core"
 #include "eos/core/Mesh.hpp"
 #include "eos/fitting/orthographic_camera_estimation_linear.hpp"
 #include "eos/fitting/RenderingParameters.hpp"
@@ -34,9 +35,9 @@ namespace eos {
         namespace fitting {
 
 struct PoseResults {
-    cv::Mat blendshapes_as_basis;
-    cv::Mat current_pca_shape;
-    cv::Mat current_combined_shape;
+    Eigen::VectorXf blendshapes_as_basis;
+    Eigen::VectorXf current_pca_shape;
+    Eigen::VectorXf  current_combined_shape;
     eos::core::Mesh current_mesh;
     std::vector<cv::Vec4f> model_points;
     std::vector<int> vertex_indices;

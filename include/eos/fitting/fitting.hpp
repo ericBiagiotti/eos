@@ -218,6 +218,13 @@ inline eos::fitting::PoseResults initialize_and_estimate_pose(const morphablemod
     assert(landmarks.size() >= 4);
     assert(image_width > 0 && image_height > 0);
     assert(pca_shape_coefficients.size() <= morphable_model.get_shape_model().get_num_principal_components());
+    // More asserts I forgot?
+
+    using std::vector;
+    using cv::Vec2f;
+    using cv::Vec4f;
+    using Eigen::VectorXf;
+    using Eigen::MatrixXf;
 
     if (!num_shape_coefficients_to_fit)
     {
@@ -226,54 +233,47 @@ inline eos::fitting::PoseResults initialize_and_estimate_pose(const morphablemod
 
     if (pca_shape_coefficients.empty())
     {
-        pca_shape_coefficients.resize(num_shape_coefficients_to_fit.value());
+            pca_shape_coefficients.resize(num_shape_coefficients_to_fit.get());
     }
     // Todo: This leaves the following case open: num_coeffs given is empty or defined, but the
     // pca_shape_coefficients given is != num_coeffs or the model's max-coeffs. What to do then? Handle & document!
 
     if (blendshape_coefficients.empty())
     {
-        blendshape_coefficients.resize(blendshapes.size());
+            blendshape_coefficients.resize(blendshapes.size());
     }
 
-    cv::Mat blendshapes_as_basis = eos::morphablemodel::to_matrix(blendshapes);
+    MatrixXf blendshapes_as_basis = morphablemodel::to_matrix(blendshapes);
 
     // Current mesh - either from the given coefficients, or the mean:
-    cv::Mat current_pca_shape = morphable_model.get_shape_model().draw_sample(pca_shape_coefficients);
-    cv::Mat current_combined_shape = current_pca_shape + blendshapes_as_basis * cv::Mat(blendshape_coefficients);
-    auto current_mesh = eos::morphablemodel::sample_to_mesh(
-                current_combined_shape,
-                morphable_model.get_color_model().get_mean(),
-                morphable_model.get_shape_model().get_triangle_list(),
-                morphable_model.get_color_model().get_triangle_list(),
-                morphable_model.get_texture_coordinates());
+    VectorXf current_pca_shape = morphable_model.get_shape_model().draw_sample(pca_shape_coefficients);
+    VectorXf current_combined_shape = current_pca_shape + blendshapes_as_basis * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
+    auto current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
 
     // The 2D and 3D point correspondences used for the fitting:
-    std::vector<cv::Vec4f> model_points; // the points in the 3D shape model
-    std::vector<int> vertex_indices; // their vertex indices
-    std::vector<cv::Vec2f> image_points; // the corresponding 2D landmark points
+    vector<Vec4f> model_points; // the points in the 3D shape model
+    vector<int> vertex_indices; // their vertex indices
+    vector<Vec2f> image_points; // the corresponding 2D landmark points
 
     // Sub-select all the landmarks which we have a mapping for (i.e. that are defined in the 3DMM),
     // and get the corresponding model points (mean if given no initial coeffs, from the computed shape otherwise):
     for (int i = 0; i < landmarks.size(); ++i) {
-        auto converted_name = landmark_mapper.convert(landmarks[i].name);
-        if (!converted_name) { // no mapping defined for the current landmark
-            continue;
-        }
-        int vertex_idx = std::stoi(converted_name.get());
-        cv::Vec4f vertex(
-                    current_mesh.vertices[vertex_idx].x,
-                    current_mesh.vertices[vertex_idx].y,
-                    current_mesh.vertices[vertex_idx].z,
-                    current_mesh.vertices[vertex_idx].w);
-        model_points.emplace_back(vertex);
-        vertex_indices.emplace_back(vertex_idx);
-        image_points.emplace_back(landmarks[i].coordinates);
+            auto converted_name = landmark_mapper.convert(landmarks[i].name);
+            if (!converted_name) { // no mapping defined for the current landmark
+                    continue;
+            }
+            int vertex_idx = std::stoi(converted_name.get());
+            Vec4f vertex(current_mesh.vertices[vertex_idx].x, current_mesh.vertices[vertex_idx].y, current_mesh.vertices[vertex_idx].z, current_mesh.vertices[vertex_idx].w);
+            model_points.emplace_back(vertex);
+            vertex_indices.emplace_back(vertex_idx);
+            image_points.emplace_back(landmarks[i].coordinates);
     }
 
-    eos::fitting::ScaledOrthoProjectionParameters current_pose;
-    current_pose = eos::fitting::estimate_orthographic_projection_linear(image_points, model_points, true, image_height);
-    eos::fitting::RenderingParameters rendering_params(current_pose, image_width, image_height);
+    // Need to do an initial pose fit to do the contour fitting inside the loop.
+    // We'll do an expression fit too, since face shapes vary quite a lot, depending on expressions.
+    fitting::ScaledOrthoProjectionParameters current_pose;
+    current_pose = fitting::estimate_orthographic_projection_linear(image_points, model_points, true, image_height);
+    fitting::RenderingParameters rendering_params(current_pose, image_width, image_height);
 
     eos::fitting::PoseResults results;
     results.blendshapes_as_basis = blendshapes_as_basis;
@@ -363,19 +363,17 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
             pose_results = poses.value();
         }
 
-        Mat blendshapes_as_basis = pose_results.blendshapes_as_basis;
-
 	if (blendshape_coefficients.empty())
 	{
 		blendshape_coefficients.resize(blendshapes.size());
 	}
 
-	MatrixXf blendshapes_as_basis = morphablemodel::to_matrix(blendshapes);
+        MatrixXf blendshapes_as_basis = pose_results.blendshapes_as_basis;
 
 	// Current mesh - either from the given coefficients, or the mean:
-	VectorXf current_pca_shape = morphable_model.get_shape_model().draw_sample(pca_shape_coefficients);
-	VectorXf current_combined_shape = current_pca_shape + blendshapes_as_basis * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
-	auto current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
+        VectorXf current_pca_shape = pose_results.current_pca_shape;
+        VectorXf current_combined_shape = pose_results.current_combined_shape;
+        auto current_mesh = pose_results.current_mesh;
 
 	// The 2D and 3D point correspondences used for the fitting:
         vector<Vec4f> model_points = pose_results.model_points;
@@ -389,13 +387,14 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
 	cv::Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image_width, image_height);
 	blendshape_coefficients = fitting::fit_blendshapes_to_landmarks_nnls(blendshapes, current_pca_shape, affine_from_ortho, image_points, vertex_indices);
 
+        // TODO: Determine if these are necessary
 	// Mesh with same PCA coeffs as before, but new expression fit (this is relevant if no initial blendshape coeffs have been given):
-	current_combined_shape = current_pca_shape + morphablemodel::to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
-	current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
+        //current_combined_shape = current_pca_shape + morphablemodel::to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
+        //current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
 
 	// The static (fixed) landmark correspondences which will stay the same throughout
 	// the fitting (the inner face landmarks):
-	auto fixed_image_points = image_points;
+        auto fixed_image_points = image_points;
 	auto fixed_vertex_indices = vertex_indices;
 
 	for (int i = 0; i < num_iterations; ++i)
