@@ -35,7 +35,7 @@ namespace eos {
         namespace fitting {
 
 struct PoseResults {
-    Eigen::VectorXf blendshapes_as_basis;
+    Eigen::MatrixXf blendshapes_as_basis;
     Eigen::VectorXf current_pca_shape;
     Eigen::VectorXf  current_combined_shape;
     eos::core::Mesh current_mesh;
