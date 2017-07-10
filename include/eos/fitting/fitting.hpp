@@ -237,7 +237,6 @@ inline eos::fitting::PoseResults initialize_and_estimate_pose(const morphablemod
     }
     // Todo: This leaves the following case open: num_coeffs given is empty or defined, but the
     // pca_shape_coefficients given is != num_coeffs or the model's max-coeffs. What to do then? Handle & document!
-
     if (blendshape_coefficients.empty())
     {
             blendshape_coefficients.resize(blendshapes.size());
@@ -353,7 +352,7 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
 	using cv::Vec2f;
 	using cv::Vec4f;
 	using Eigen::VectorXf;
-	using Eigen::MatrixXf;
+        using Eigen::MatrixXf;
 
         eos::fitting::PoseResults pose_results;
         if (!poses) {
@@ -363,10 +362,10 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
             pose_results = poses.value();
         }
 
-	if (blendshape_coefficients.empty())
-	{
-		blendshape_coefficients.resize(blendshapes.size());
-	}
+        if (blendshape_coefficients.empty())
+        {
+                blendshape_coefficients.resize(blendshapes.size());
+        }
 
         MatrixXf blendshapes_as_basis = pose_results.blendshapes_as_basis;
 
@@ -387,10 +386,13 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
 	cv::Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image_width, image_height);
 	blendshape_coefficients = fitting::fit_blendshapes_to_landmarks_nnls(blendshapes, current_pca_shape, affine_from_ortho, image_points, vertex_indices);
 
-        // TODO: Determine if these are necessary
-	// Mesh with same PCA coeffs as before, but new expression fit (this is relevant if no initial blendshape coeffs have been given):
-        //current_combined_shape = current_pca_shape + morphablemodel::to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
-        //current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
+        // NOTE: EB: I can't quite figure this out. Seems like there should be a check to determine if no initial blendshape coeffs have been given
+        // instead of always running these 2 lines. Either way, it seems like we will always be providing initial blendshape coeffs,
+        // and I haven't seen a change in the results, so I commented it out for now.
+        //
+        // Mesh with same PCA coeffs as before, but new expression fit (this is relevant if no initial blendshape coeffs have been given):
+        // current_combined_shape = current_pca_shape + morphablemodel::to_matrix(blendshapes) * Eigen::Map<const Eigen::VectorXf>(blendshape_coefficients.data(), blendshape_coefficients.size());
+        // current_mesh = morphablemodel::sample_to_mesh(current_combined_shape, morphable_model.get_color_model().get_mean(), morphable_model.get_shape_model().get_triangle_list(), morphable_model.get_color_model().get_triangle_list(), morphable_model.get_texture_coordinates());
 
 	// The static (fixed) landmark correspondences which will stay the same throughout
 	// the fitting (the inner face landmarks):
