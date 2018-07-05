@@ -34,6 +34,16 @@
 namespace eos {
         namespace fitting {
 
+/**
+ * @brief The DetectedFace enum
+ * The type of face detected
+ */
+enum DetectedFace {
+    NO_FACE = 0,
+    FRONTAL,
+    PROFILE
+};
+
 struct PoseResults {
     Eigen::MatrixXf blendshapes_as_basis;
     Eigen::VectorXf current_pca_shape;
@@ -44,6 +54,7 @@ struct PoseResults {
     std::vector<cv::Vec2f> image_points;
     eos::fitting::ScaledOrthoProjectionParameters current_pose;
     eos::fitting::RenderingParameters rendering_params;
+    eos::fitting::DetectedFace detected_face = DetectedFace::NO_FACE;
     int num_shape_coefficients_to_fit;
 };
 
