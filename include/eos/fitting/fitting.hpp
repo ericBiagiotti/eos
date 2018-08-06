@@ -402,33 +402,32 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
 	{
             image_points = fixed_image_points;
             vertex_indices = fixed_vertex_indices;
-            if (pose_results.detected_face != DetectedFace::PROFILE)
-            {
-                    // Given the current pose, find 2D-3D contour correspondences of the front-facing face contour:
-                    vector<Vec2f> image_points_contour;
-                    vector<int> vertex_indices_contour;
-                    auto yaw_angle = glm::degrees(glm::eulerAngles(rendering_params.get_rotation())[1]);
-                    // For each 2D contour landmark, get the corresponding 3D vertex point and vertex id:
-                    std::tie(image_points_contour, std::ignore, vertex_indices_contour) = fitting::get_contour_correspondences(landmarks, contour_landmarks, model_contour, yaw_angle, current_mesh, rendering_params.get_modelview(), rendering_params.get_projection(), fitting::get_opencv_viewport(image_width, image_height));
-                    // Add the contour correspondences to the set of landmarks that we use for the fitting:
-                    vertex_indices = fitting::concat(vertex_indices, vertex_indices_contour);
-                    image_points = fitting::concat(image_points, image_points_contour);
 
-                    // Fit the occluding (away-facing) contour using the detected contour LMs:
-                    vector<Eigen::Vector2f> occluding_contour_landmarks;
-                    if (yaw_angle >= 0.0f) // positive yaw = subject looking to the left
-                    { // the left contour is the occluding one we want to use ("away-facing")
-                            auto contour_landmarks_ = core::filter(landmarks, contour_landmarks.left_contour); // Can do this outside of the loop
-                            std::for_each(begin(contour_landmarks_), end(contour_landmarks_), [&occluding_contour_landmarks](auto&& lm) { occluding_contour_landmarks.push_back({ lm.coordinates[0], lm.coordinates[1] }); });
-                    }
-                    else {
-                            auto contour_landmarks_ = core::filter(landmarks, contour_landmarks.right_contour);
-                            std::for_each(begin(contour_landmarks_), end(contour_landmarks_), [&occluding_contour_landmarks](auto&& lm) { occluding_contour_landmarks.push_back({ lm.coordinates[0], lm.coordinates[1] }); });
-                    }
-                    auto edge_correspondences = fitting::find_occluding_edge_correspondences(current_mesh, edge_topology, rendering_params, occluding_contour_landmarks, 180.0f);
-                    image_points = fitting::concat(image_points, edge_correspondences.first);
-                    vertex_indices = fitting::concat(vertex_indices, edge_correspondences.second);
+            // Given the current pose, find 2D-3D contour correspondences of the front-facing face contour:
+            vector<Vec2f> image_points_contour;
+            vector<int> vertex_indices_contour;
+            auto yaw_angle = glm::degrees(glm::eulerAngles(rendering_params.get_rotation())[1]);
+            // For each 2D contour landmark, get the corresponding 3D vertex point and vertex id:
+            std::tie(image_points_contour, std::ignore, vertex_indices_contour) = fitting::get_contour_correspondences(landmarks, contour_landmarks, model_contour, yaw_angle, current_mesh, rendering_params.get_modelview(), rendering_params.get_projection(), fitting::get_opencv_viewport(image_width, image_height));
+            // Add the contour correspondences to the set of landmarks that we use for the fitting:
+            vertex_indices = fitting::concat(vertex_indices, vertex_indices_contour);
+            image_points = fitting::concat(image_points, image_points_contour);
+
+            // Fit the occluding (away-facing) contour using the detected contour LMs:
+            vector<Eigen::Vector2f> occluding_contour_landmarks;
+            if (yaw_angle >= 0.0f) // positive yaw = subject looking to the left
+            { // the left contour is the occluding one we want to use ("away-facing")
+                    auto contour_landmarks_ = core::filter(landmarks, contour_landmarks.left_contour); // Can do this outside of the loop
+                    std::for_each(begin(contour_landmarks_), end(contour_landmarks_), [&occluding_contour_landmarks](auto&& lm) { occluding_contour_landmarks.push_back({ lm.coordinates[0], lm.coordinates[1] }); });
             }
+            else {
+                    auto contour_landmarks_ = core::filter(landmarks, contour_landmarks.right_contour);
+                    std::for_each(begin(contour_landmarks_), end(contour_landmarks_), [&occluding_contour_landmarks](auto&& lm) { occluding_contour_landmarks.push_back({ lm.coordinates[0], lm.coordinates[1] }); });
+            }
+            auto edge_correspondences = fitting::find_occluding_edge_correspondences(current_mesh, edge_topology, rendering_params, occluding_contour_landmarks, 180.0f);
+            image_points = fitting::concat(image_points, edge_correspondences.first);
+            vertex_indices = fitting::concat(vertex_indices, edge_correspondences.second);
+
             // Get the model points of the current mesh, for all correspondences that we've got:
             model_points.clear();
             for (const auto& v : vertex_indices)
@@ -442,7 +441,6 @@ inline std::pair<core::Mesh, fitting::RenderingParameters> fit_shape_and_pose(co
                 current_pose = fitting::estimate_orthographic_projection_linear(image_points, model_points, true, image_height);
                 rendering_params = fitting::RenderingParameters(current_pose, image_width, image_height);
             }
-            auto test = glm::degrees(glm::eulerAngles(rendering_params.get_rotation())[1]);
             cv::Mat affine_from_ortho = fitting::get_3x4_affine_camera_matrix(rendering_params, image_width, image_height);
 
             // Estimate the PCA shape coefficients with the current blendshape coefficients:
